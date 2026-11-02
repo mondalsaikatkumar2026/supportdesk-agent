@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TicketStatus {
+  PENDING
+  PROCESSING
+  RESOLVED
+}
+
+enum ResolutionTag {
+  AUTO_RESOLVE
+  ESCALATE_TO_SALES
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  createdAt     DateTime       @default(now())
+  triageResults TriageResult[]
+}
+
+model Ticket {
+  id            String         @id // e.g. TCK-001
+  customerId    String // e.g. USR-101
+  orderId       String? // e.g. ORD-9012
+  message       String         @db.Text
+  status        TicketStatus   @default(PENDING)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  triageResults TriageResult[]
+
+  @@index([status])
+}
+
+model TriageResult {
+  id             String        @id @default(cuid())
+  ticketId       String
+  triggeredById  String
+  customerDraft  String        @db.Text
+  resolutionTag  ResolutionTag
+  reasoning      String?       @db.Text
+  trace          Json
+  createdAt      DateTime      @default(now())
+
+  ticket      Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  triggeredBy User   @relation(fields: [triggeredById], references: [id])
+
+  @@index([ticketId, createdAt])
+}
